@@ -3,19 +3,29 @@ import yaml
 from enum import Enum 
 
 from pydantic import (
-    BaseModel, Field, HttpUrl, DirectoryPath, FilePath, Secret, ValidationError, field_serializer
+    BaseModel, Field, field_serializer, HttpUrl, DirectoryPath, FilePath, Secret, ValidationError 
 ) 
 
 
 class AutoAnimeSettings(BaseModel): 
     name: str = Field('AutoAnime', frozen=True) 
-    version: str = Field('3.0.0-beta4-1') 
+    version: str = Field('3.0.0-beta4-1', frozen=True) 
 
 
 class AnimeSources(str, Enum): 
     acgrip = 'acgrip' 
     dmhy = 'dmhy' 
     bangumi = 'bangumi' 
+
+
+class AnimeSourcesParsed(str, Enum): 
+    acgrip = 'acgrip' 
+    dmhy = 'dmhy' 
+    bangumi = 'bangumi' 
+
+
+class AnimeSourcesSubscribed(str, Enum): 
+    pass 
 
 
 class UserSettings(BaseModel, validate_assignment=True): 
@@ -53,21 +63,21 @@ class UserSettings(BaseModel, validate_assignment=True):
 
     @field_serializer('default_source', when_used='json') 
     def default_source(self, default_source: AnimeSources) -> str: 
-        return str(default_source.value) 
+        return default_source.value 
     
     
     @field_serializer('http_proxy', when_used='json') 
     def http_proxy_serializer(self, http_proxy: HttpUrl | None) -> str | None: 
         if http_proxy is None: 
             return None 
-        else:
+        else: 
             return str(http_proxy) 
 
 
-def read_user_settings_file(user_settings: UserSettings) -> dict[str, str]: 
+def read_user_settings_file(user_settings: UserSettings) -> dict[str, str | dict[str, str]]: 
     settings_file_path: str = user_settings.settings_file_path 
     if not os.path.isfile(settings_file_path): 
-        return {'code': 0, 'msg': 'User settings file does not exist', 'detail': ''} 
+        return {'code': 0, 'msg': 'User settings file does not exist', 'detail': []} 
      
     with open(settings_file_path, mode='r') as f: 
         user_settings_dict: dict = yaml.safe_load(f) 
@@ -75,16 +85,18 @@ def read_user_settings_file(user_settings: UserSettings) -> dict[str, str]:
     try: 
         UserSettings.model_validate(user_settings_dict) 
     except ValidationError as e: 
-        return { 
-            'code': 0, 
-            'msg': 'User settings file loading failed', 
-            'detail': {errors['loc'][0] if errors['loc'] else None: errors['msg'] for errors in e.errors()} 
-        } 
+        error_list = e.errors(include_url=False, include_input=False, include_context=False) 
+        for err in error_list: 
+            if err['loc']: 
+                err['loc'] = err['loc'][0] 
+            else: 
+                err['loc'] = 'null' 
+        return {'code': 0, 'msg': 'User settings file loading failed', 'detail': error_list} 
     else: 
-        for k, v in user_settings_dict.items():
+        for k, v in user_settings_dict.items(): 
             setattr(user_settings, k, v) 
         
-        return {'code': 1, 'msg': 'User settings file loaded successfully', 'detail': ''} 
+        return {'code': 1, 'msg': 'User settings file loaded successfully', 'detail': []} 
 
 
 def save_user_settings_file(user_settings: UserSettings) -> None: 
@@ -96,27 +108,29 @@ def save_user_settings_file(user_settings: UserSettings) -> None:
 
 
 user_settings = UserSettings(
-    host_name = 'AutoAnime',  
-    base_path = os.path.dirname(__file__),  
+    host_name = 'AutoAnime', 
+    base_path = os.path.dirname(__file__), 
     work_path = os.path.dirname(__file__),  
-    settings_file_path = os.path.join(os.path.dirname(__file__), 'user_settings.yaml'),  
-    jellyfin_addr = 'http://127.0.0.1:8096/',  
-    jellyfin_username = 'root',  
-    jellyfin_password = '',  
-    qbittorrent_addr = 'http://127.0.0.1:8080/',  
-    qbittorrent_username = 'admin',  
-    qbittorrent_password = '',  
-    refresh_time = 2,  
-    auto_update_offline_interval = 7200,  
-    auto_update_online_interval = 604800,  
+    settings_file_path = os.path.join(os.path.dirname(__file__), 'user_settings.yaml'), 
+    jellyfin_addr = 'http://127.0.0.1:8096/', 
+    jellyfin_username = 'root', 
+    jellyfin_password = '', 
+    qbittorrent_addr = 'http://127.0.0.1:8080/', 
+    qbittorrent_username = 'admin', 
+    qbittorrent_password = '', 
+    refresh_time = 2, 
+    auto_update_offline_interval = 7200, 
+    auto_update_online_interval = 604800, 
     default_source = list(AnimeSources)[0].value, 
-    download = True,  
-    timeout = 20,  
-    http_proxy = None,
+    download = True, 
+    timeout = 20, 
+    http_proxy = None, 
 ) 
+
+# user_settings_default = user_settings.model_copy() 
 
 
 if __name__ == '__main__': 
     print(read_user_settings_file(user_settings)) 
     print(user_settings) 
-    save_user_settings_file(user_settings) 
+    # save_user_settings_file(user_settings) 

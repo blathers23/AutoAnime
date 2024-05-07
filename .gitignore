@@ -1,1 +1,3 @@
-user_settings.yaml
+__pycache__
+*.db
+*.yaml
