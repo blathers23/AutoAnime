@@ -23,10 +23,9 @@ class EpisodeUpdateTaskDB(SQLModel, table=True):
     torrent_file_path: str 
     torrent_magnet: str 
     uuid: str 
-    season: int 
     episode_num: int 
+    file_path: str 
     pub_date: float 
-    dir_path: str 
     under_management: bool 
     done: bool 
 

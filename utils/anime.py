@@ -5,11 +5,11 @@ from urllib.parse import quote
 from settings import AnimeSources, user_settings 
 
 
-def anime_get_uuid(name: str, season: int) -> str: 
+def get_uuid(name: str, season: int) -> str: 
     return sha1((name+str(season)).encode()).hexdigest() 
 
 
-def anime_get_dir_path(name: str, season: str) -> str: 
+def get_dir_path(name: str, season: str) -> str: 
     return os.path.join(user_settings.base_path, name, f'Season{str(season)}') 
 
 
@@ -35,5 +35,6 @@ anime_http_url_constructor = {
 }
 
 
-def anime_get_http_url(source: AnimeSources, search_text: str) -> str: 
+def get_http_url(source: AnimeSources, search_text: str) -> str: 
     return anime_http_url_constructor[source.value](search_text) 
+

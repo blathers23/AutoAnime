@@ -1,14 +1,6 @@
-from pydantic import BaseModel, DirectoryPath, HttpUrl 
+from pydantic import BaseModel, DirectoryPath, HttpUrl, AnyUrl  
 
 from settings import AnimeSources
-
-
-class AnimeChange(BaseModel, validate_assignment=True): 
-    uuid: str 
-    source: AnimeSources | None = None 
-    search_text: str | None = None 
-    http_url: HttpUrl | None = None 
-    auto_update: bool | None = None 
 
 
 class AnimeAdd(BaseModel, validate_assignment=True): 
@@ -20,6 +12,14 @@ class AnimeAdd(BaseModel, validate_assignment=True):
     auto_update: bool 
 
 
+class AnimeChange(BaseModel, validate_assignment=True): 
+    uuid: str 
+    source: AnimeSources | None = None 
+    search_text: str | None = None 
+    http_url: HttpUrl | None = None 
+    auto_update: bool | None = None 
+
+
 class AnimeInquire(BaseModel, validate_assignment=True): 
     uuid: str | None 
     name: str | None 
@@ -29,7 +29,7 @@ class AnimeDelete(BaseModel, validate_assignment=True):
     uuid: str | None 
 
 
-class Anime(BaseModel, validate_assignment=True): 
+class AnimeUpdate(BaseModel, validate_assignment=True): 
     uuid: str 
     season: int  
     dir_path: DirectoryPath 
@@ -37,3 +37,13 @@ class Anime(BaseModel, validate_assignment=True):
     http_url: HttpUrl 
     episodes_list: list[int] 
     xml: str 
+
+
+class EpisodeAdd(BaseModel, validate_assignment=True): 
+    torrent_url: AnyUrl 
+    uuid: str 
+    season: int 
+    dir_path: str 
+    episode_num: int  
+    pub_date: float 
+
