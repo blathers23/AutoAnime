@@ -28,6 +28,7 @@ class EpisodeUpdateTaskDB(SQLModel, table=True):
     pub_date: float 
     under_management: bool 
     done: bool 
+    success: bool 
 
 
 # engine = create_engine(url=f'sqlite:///{user_settings.work_path}/autoanime.db') 
