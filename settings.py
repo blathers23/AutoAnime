@@ -47,8 +47,10 @@ class UserSettings(BaseModel, validate_assignment=True):
     auto_update_online_interval: int 
     default_source: AnimeSources 
     download: bool 
-    timeout: int 
+    timeout_proxy: int 
+    timeout_update: int 
     http_proxy: HttpUrl | None 
+    max_episode_update_task_db_capacity: int 
 
 
     @field_serializer('jellyfin_addr', when_used='json')
@@ -107,6 +109,8 @@ def save_user_settings_file(user_settings: UserSettings) -> None:
         yaml.dump(user_settings_dict, f) 
 
 
+autoanime_settings = AutoAnimeSettings() 
+
 user_settings = UserSettings(
     host_name = 'AutoAnime', 
     base_path = os.path.dirname(__file__), 
@@ -123,8 +127,10 @@ user_settings = UserSettings(
     auto_update_online_interval = 604800, 
     default_source = list(AnimeSources)[0].value, 
     download = True, 
-    timeout = 20, 
+    timeout_proxy = 20, 
+    timeout_update = 3600, 
     http_proxy = None, 
+    max_episode_update_task_db_capacity = 500, 
 ) 
 
 # user_settings_default = user_settings.model_copy() 

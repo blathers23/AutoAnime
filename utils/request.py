@@ -10,7 +10,7 @@ async def request_tmp_file_async(url: str) -> str:
     if proxy: 
         proxy = user_settings.http_proxy.unicode_string() 
     
-    async with ClientSession(timeout=ClientTimeout(total=user_settings.timeout)) as session: 
+    async with ClientSession(timeout=ClientTimeout(total=user_settings.timeout_proxy)) as session: 
         async with session.get(url, proxy=proxy) as resp: 
             content = await resp.content.read() 
             with NamedTemporaryFile(delete=False) as fp: 
@@ -24,7 +24,7 @@ async def request_xml_async(url: str) -> str:
     if proxy: 
         proxy = user_settings.http_proxy.unicode_string() 
 
-    async with ClientSession(timeout=ClientTimeout(total=user_settings.timeout)) as session: 
+    async with ClientSession(timeout=ClientTimeout(total=user_settings.timeout_proxy)) as session: 
         async with session.get(url, proxy=proxy) as resp: 
 
             return await resp.text() 

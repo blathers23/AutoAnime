@@ -31,6 +31,7 @@ class AnimeDelete(BaseModel, validate_assignment=True):
 
 class AnimeUpdate(BaseModel, validate_assignment=True): 
     uuid: str 
+    name: str 
     season: int  
     dir_path: DirectoryPath 
     source: AnimeSources 
@@ -42,8 +43,20 @@ class AnimeUpdate(BaseModel, validate_assignment=True):
 class EpisodeAdd(BaseModel, validate_assignment=True): 
     torrent_url: AnyUrl 
     uuid: str 
+    name: str 
     season: int 
     dir_path: str 
     episode_num: int  
     pub_date: float 
+
+
+class EpisodeUpdate(BaseModel, validate_assignment=True): 
+    id_: int 
+    torrent_hash: str 
+    uuid: str 
+    file_path: str 
+    episode_num: int  
+    pub_date: float 
+    downloaded: bool  
+    copied: bool  
 

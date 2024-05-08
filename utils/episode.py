@@ -26,22 +26,22 @@ async def parse_torrent_url_async(torrent_url: AnyUrl) -> tuple[str, str, str]:
         torrent_magnet = torrent_url.unicode_string() 
 
         xt = torrent_url.query[3:torrent_url.query.find('&')] 
-        assert xt[:9] == 'urn:btih:', 'xt not support yet'
+        if xt is None: 
+            raise AssertionError(f'there is no xt in torrent magnet {torrent_magnet}') 
 
+        elif xt[:9] != 'urn:btih:': 
+            raise AssertionError(f'torrent magnet xt {xt} scheme not support yet') 
+        
         infohash = xt[9:] 
         if len(infohash) == 32:
             torrent_hash = b32decode(infohash).hex() 
         elif len(infohash) == 40: 
             torrent_hash = infohash 
         else: 
-            raise AssertionError('length not correct') 
+            raise AssertionError(f'torrent magnet infohash {infohash} length not correct') 
 
     else: 
-        raise AssertionError('scheme not support yet') 
+        raise AssertionError(f'torrent url {torrent_url} scheme not support yet') 
     
     return torrent_hash, torrent_file_path, torrent_magnet 
 
-    
-
-def parse_xml():
-    pass 

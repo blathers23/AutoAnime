@@ -23,6 +23,8 @@ class EpisodeUpdateTaskDB(SQLModel, table=True):
     torrent_file_path: str 
     torrent_magnet: str 
     uuid: str 
+    name: str 
+    season: int 
     episode_num: int 
     file_path: str 
     pub_date: float 
@@ -36,39 +38,39 @@ engine = create_engine(url=f'sqlite:///{user_settings.work_path}/autoanime.db', 
 SQLModel.metadata.create_all(engine) 
 
 
-if __name__ == '__main__': 
-    import os 
+# if __name__ == '__main__': 
+#     import os 
 
-    from sqlmodel import Session, select, update 
+#     from sqlmodel import Session, select, update 
 
-    anime = AnimeDB(
-        uuid='1', name='test', season=1, dir_path='', source=user_settings.default_source, 
-        search_text=None, http_url='', episodes_str='1', newest_pub_date=0., auto_update=True, 
-        under_management=False, 
-    ) 
+#     anime = AnimeDB(
+#         uuid='1', name='test', season=1, dir_path='', source=user_settings.default_source, 
+#         search_text=None, http_url='', episodes_str='1', newest_pub_date=0., auto_update=True, 
+#         under_management=False, 
+#     ) 
 
-    with Session(engine) as session: 
-        session.add(anime) 
-        # session.add(episode) 
-        session.commit() 
+#     with Session(engine) as session: 
+#         session.add(anime) 
+#         # session.add(episode) 
+#         session.commit() 
 
-    # anime_change = AnimeDB(
-    #     uuid='1', name='test', season=1, dir_path='', source=user_settings.default_source, 
-    #     search_text='', http_url='', episodes='1', newest_pub_date=0., auto_update=True, 
-    #     under_management=True, 
-    # ) 
+#     # anime_change = AnimeDB(
+#     #     uuid='1', name='test', season=1, dir_path='', source=user_settings.default_source, 
+#     #     search_text='', http_url='', episodes='1', newest_pub_date=0., auto_update=True, 
+#     #     under_management=True, 
+#     # ) 
 
-    with Session(engine) as session: 
-        anime = session.exec(select(AnimeDB).where(AnimeDB.name.contains('a'))).first() 
-        print(anime)
+#     with Session(engine) as session: 
+#         anime = session.exec(select(AnimeDB).where(AnimeDB.season - 1 > -1)).first() 
+#         print(anime)
 
-    # with Session(engine) as session: 
-    #     anime = session.exec(select(AnimeDB)).first() 
-    #     print(anime) 
-    #     anime.name = '2' 
-    #     session.add(anime) 
-    #     session.commit() 
-    #     anime = session.exec(select(AnimeDB)).first() 
-    #     print(anime) 
+#     # with Session(engine) as session: 
+#     #     anime = session.exec(select(AnimeDB)).first() 
+#     #     print(anime) 
+#     #     anime.name = '2' 
+#     #     session.add(anime) 
+#     #     session.commit() 
+#     #     anime = session.exec(select(AnimeDB)).first() 
+#     #     print(anime) 
 
-    os.remove(os.path.join(user_settings.work_path, 'autoanime.db')) 
+#     os.remove(os.path.join(user_settings.work_path, 'autoanime.db')) 

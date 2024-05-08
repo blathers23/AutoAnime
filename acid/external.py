@@ -4,8 +4,8 @@ import asyncio
 from sqlmodel import Session, select, and_  
 
 from settings import AnimeSourcesParsed, user_settings 
-from model import AnimeChange, AnimeAdd, AnimeInquire, AnimeDelete, EpisodeAdd   
-from database import engine, AnimeDB, EpisodeUpdateTaskDB   
+from model import AnimeChange, AnimeAdd, AnimeInquire, AnimeDelete, EpisodeAdd, EpisodeUpdate 
+from database import engine, AnimeDB, EpisodeUpdateTaskDB 
 from utils import anime, episode 
 
 
@@ -148,21 +148,6 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
     return {'code': 1, 'msg': 'Anime changed successfully', 'detail': ''} 
 
 
-def inquire_anime_update_ready() -> list[AnimeDB]: 
-    with Session(engine) as session: 
-        anime_db_list = session.exec(select(AnimeDB).where( 
-            and_(AnimeDB.auto_update == True, AnimeDB.under_management == False) 
-        ).with_for_update()).all() 
-
-        for anime_db in anime_db_list: 
-            anime_db.under_management = True 
-        
-        session.add_all(anime_db_list) 
-        session.commit() 
-
-    return anime_db_list 
-
-
 def inquire_anime(anime_inquire: AnimeInquire) -> dict[str, str | list[dict[str, str]]]: 
     with Session(engine) as session: 
         if anime_inquire.uuid is not None: 
@@ -191,99 +176,39 @@ def delete_anime(anime_delete: AnimeDelete) -> dict[str, str | list[str, str]]:
         
         if anime_db.under_management: 
             return {'code': 0, 'msg': 'Anime is under management', 'detail': []} 
-        
-        anime_db.under_management = True 
 
-        session.add(anime_db) 
-        session.commit() 
-
-    with Session(engine) as session: 
-        anime_db = session.exec(select(AnimeDB).where(AnimeDB.uuid == anime_delete.uuid)).first() 
-        
         session.delete(anime_db) 
         session.commit() 
 
 
-async def _get_episode_db_async(episode_add: EpisodeAdd) -> EpisodeUpdateTaskDB: 
-    try:
-        torrent_hash, torrent_file_path, torrent_magnet = await episode.parse_torrent_url_async(episode_add.torrent_url) 
-    except AssertionError as e: 
-        print(e) 
-        return None 
-    else: 
-        return EpisodeUpdateTaskDB( 
-            torrent_hash=torrent_hash, 
-            torrent_file_path=torrent_file_path, 
-            torrent_magnet=torrent_magnet, 
-            episode_num=episode_add.episode_num, 
-            file_path=os.path.join(
-                episode_add.dir_path, 
-                f'S{str(episode_add.season)}E{str(episode_add.episode_num)}', 
-            ), 
-            pub_date=episode_add.pub_date, 
-            under_management=False, 
-            done=False, 
-            success=False, 
-        ) 
-
-
-async def add_episode_list(episode_add_list: list[EpisodeAdd]) -> None: 
-    
-    episode_update_task_list: list[EpisodeUpdateTaskDB] = await asyncio.gather(*( 
-        asyncio.create_task(_get_episode_db_async(episode_add)) for episode_add in episode_add_list 
-    )) 
-    episode_update_task_list = [episode_db for episode_db in episode_update_task_list if episode_db] 
-
+def inquire_episode(done: bool | None, under_management: bool | None) -> dict[str, str | list[str, str]]: 
     with Session(engine) as session: 
-        session.add_all(episode_update_task_list) 
-        session.commit() 
+        if done is None and under_management is None: 
+            episode_update_task_db_list = session.exec(select(EpisodeUpdateTaskDB)).all() 
+        elif done is not None and under_management is not None: 
+            episode_update_task_db_list = session.exec( 
+                select(EpisodeUpdateTaskDB).where( 
+                    and_(EpisodeUpdateTaskDB.done == done, EpisodeUpdateTaskDB.under_management == under_management) 
+                ) 
+            ).all() 
+        elif done is not None: 
+            episode_update_task_db_list = session.exec(
+                select(EpisodeUpdateTaskDB).where(EpisodeUpdateTaskDB.done == done)
+            ).all() 
+        else: 
+            episode_update_task_db_list = session.exec(
+                select(EpisodeUpdateTaskDB).where(EpisodeUpdateTaskDB.under_management == under_management) 
+            ).all() 
+            
 
+        detail: list[dict[str, str]] = [] 
+        for episode_update_task_db in episode_update_task_db_list: 
+            detail.append({
+                'name': episode_update_task_db.name, 
+                'season': str(episode_update_task_db.season), 
+                'episode': str(episode_update_task_db.episode_num), 
+                'success': str(episode_update_task_db.success) 
+            }) 
 
-def inquire_episode_update_ready() -> list[EpisodeUpdateTaskDB]: 
-    with Session(engine) as session: 
-        episode_list = session.exec(
-            select(EpisodeUpdateTaskDB).where(
-                EpisodeUpdateTaskDB.done == False
-            ).order_by(EpisodeUpdateTaskDB.id_).with_for_update() 
-        ).all() 
-        
-        """
-        从未完成的任务中, 按照放入任务队列的顺序, 将任务取出 
-
-        1. 如果相同的下载地址, 有任务正在进行, 则搁置之后所有的同地址任务 
-        2. 如果相同的下载地址, 没有正在进行的任务, 但是有更新的任务, 则覆盖旧的任务, 并删除旧任务的种子文件 
-
-        相同地址的确定方法为: uuid 和 episode_num, 不能采用 torrent hash 
-        """
-        uuid_add_num_episode_dict: dict[str, EpisodeUpdateTaskDB] = dict()
-        suspend_uuid_add_num_set: set[str] = set() 
-        for episode in episode_list: 
-            uuid_add_num = episode.uuid + str(episode.episode_num) 
-
-            if episode.under_management: 
-                suspend_uuid_add_num_set.add(uuid_add_num) 
-
-            elif uuid_add_num in suspend_uuid_add_num_set: 
-                continue 
-
-            elif uuid_add_num in uuid_add_num_episode_dict: 
-                uuid_add_num_episode_dict[uuid_add_num].done = True 
-
-                if os.path.isfile(uuid_add_num_episode_dict[uuid_add_num].torrent_file_path): 
-                    os.remove(uuid_add_num_episode_dict[uuid_add_num].torrent_file_path) 
-
-                uuid_add_num_episode_dict[uuid_add_num] = episode 
-
-            else: 
-                uuid_add_num_episode_dict[uuid_add_num] = episode 
-
-        episode_update_task_list=list(uuid_add_num_episode_dict.values()) 
-
-        for episode_update_task in episode_update_task_list: 
-            episode_update_task.under_management = True 
-
-        session.add_all(episode_list) 
-        session.commit() 
-
-    return episode_update_task_list 
+        return {'code': 1, 'msg': 'success', 'detail': detail} 
 
