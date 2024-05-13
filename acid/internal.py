@@ -10,6 +10,16 @@ from database import engine, AnimeDB, EpisodeUpdateTaskDB
 from utils import anime, episode 
 
 
+def change_anime_db_clean_up() -> None: 
+    with Session(engine) as session: 
+        anime_db_list = session.exec(select(AnimeDB).with_for_update()).all() 
+        for anime_db in anime_db_list: 
+            anime_db.under_management = False 
+
+        session.add_all(anime_db_list) 
+        session.commit() 
+
+
 def change_anime_db_update_result(
         uuid_episode_num_list_dict: dict[str, list[int]], uuid_episode_newest_pub_date: dict[str, float]
     ) -> None: 
@@ -97,6 +107,20 @@ async def add_episode_add_list(episode_add_list: list[EpisodeAdd]) -> None:
         session.commit() 
 
 
+def change_episode_update_task_db_cleanup() -> None:
+    with Session(engine) as session: 
+        episode_update_task_db_list = session.exec(select(EpisodeUpdateTaskDB).with_for_update()).all() 
+        id_ = 1 
+        for episode_update_task_db in episode_update_task_db_list: 
+            episode_update_task_db.id_ = id_ 
+            episode_update_task_db.under_management = False 
+            episode_update_task_db.done = True 
+            id_ += 1 
+
+        session.add_all(episode_update_task_db_list) 
+        session.commit() 
+
+
 def change_episode_update_task_db_update_result(id_set_success: set[int], id_set_fail: set[int]) -> None: 
     with Session(engine) as session: 
         episode_update_task_db_list = session.exec(
@@ -164,4 +188,14 @@ def inquire_episode_update_ready() -> list[EpisodeUpdateTaskDB]:
         session.commit() 
 
     return episode_update_task_db_list 
+
+
+def delete_episode_update_task_db_out_of_capacity() -> None: 
+    with Session(engine) as session: 
+        episode_update_task_db_list = session.exec(select(EpisodeUpdateTaskDB).with_for_update()).all() 
+        if len(episode_update_task_db_list) > user_settings.max_episode_update_task_db_capacity: 
+            for episode_update_task_db in episode_update_task_db_list[-user_settings.max_episode_update_task_db_capacity:]: 
+                session.delete(episode_update_task_db) 
+
+            session.commit() 
 

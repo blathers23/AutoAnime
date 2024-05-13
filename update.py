@@ -94,7 +94,7 @@ async def _update_copy_worker(episode_update: EpisodeUpdate) -> None:
 
         await copy(src_path, dest_path) 
 
-    episode_update.copied = True  
+    episode_update.copied = True 
     id_copy_progress_dict[episode_update.id_] = 1. 
 
 

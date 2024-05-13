@@ -29,6 +29,12 @@ class AnimeDelete(BaseModel, validate_assignment=True):
     uuid: str | None 
 
 
+class AnimeSearch(BaseModel, validate_assignment=True): 
+    source: AnimeSources 
+    search_text: str | None 
+    http_url: HttpUrl | None 
+
+
 class AnimeUpdate(BaseModel, validate_assignment=True): 
     uuid: str 
     name: str 

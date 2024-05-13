@@ -19,7 +19,7 @@ def login_jellyfin() -> JellyfinClient:
     jellyfin_client.auth.login(
         server_url=user_settings.jellyfin_addr.unicode_string()[:-1], 
         username=user_settings.jellyfin_username, 
-        password=user_settings.jellyfin_password, 
+        password=user_settings.jellyfin_password.get_secret_value(), 
     ) 
 
     return jellyfin_client 
@@ -34,7 +34,7 @@ def login_qbittorrent() -> QbittorrentClient:
         host=user_settings.qbittorrent_addr.host, 
         port=user_settings.qbittorrent_addr.port, 
         username=user_settings.qbittorrent_username, 
-        password=user_settings.qbittorrent_password, 
+        password=user_settings.qbittorrent_password.get_secret_value(), 
     )
 
     return qbittorrent_client 
