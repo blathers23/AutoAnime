@@ -33,8 +33,8 @@ class EpisodeUpdateTaskDB(SQLModel, table=True):
     success: bool 
 
 
-# engine = create_engine(url=f'sqlite:///{user_settings.work_path}/autoanime.db') 
 engine = create_engine(url=f'sqlite:///{user_settings.work_path}/autoanime.db') 
+# engine = create_engine(url=f'sqlite:///{user_settings.work_path}/autoanime.db', echo=True)  
 SQLModel.metadata.create_all(engine) 
 
 

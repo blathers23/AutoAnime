@@ -46,10 +46,10 @@ async def lifespan(app: FastAPI):
         if response['code'] == 1: 
             global settings_checked 
             settings_checked = True 
-        
+
         print(response['msg']) 
     
-    else:     
+    else: 
         print(response['msg']) 
     
     cleanup_database() 
@@ -99,14 +99,14 @@ class UncheckedException(Exception):
 
 
 @app.exception_handler(UncheckedException)
-async def unicorn_exception_handler(request: Request, exc: UncheckedException):
-    return JSONResponse(
-        status_code=403,
-        content={'code': 0, 'msg': 'Settings file has not passed testing', 'detail': []},
-    )
+async def unicorn_exception_handler(request: Request, exc: UncheckedException) -> JSONResponse: 
+    return JSONResponse( 
+        status_code=403, 
+        content={'code': 0, 'msg': 'Settings file has not passed testing', 'detail': []}, 
+    ) 
 
 
-async def is_config_loaded_and_checked() -> dict[str, str | list]: 
+async def is_config_loaded_and_checked() -> None: 
     if not settings_checked: 
         raise UncheckedException() 
     
@@ -132,8 +132,8 @@ async def check_settings():
 add_router = APIRouter(prefix='/add') 
 
 
-@add_router.post('/')
-async def add_anime_api(anime_add: AnimeAdd): 
+@add_router.post('/') 
+async def add_anime_api(anime_add: AnimeAdd) -> dict[str, str | list]: 
     response = add_anime(anime_add) 
     return response 
 
@@ -143,7 +143,7 @@ change_router = APIRouter(prefix='/change')
 
 
 @change_router.post('/')
-async def change_anime_api(anime_change: AnimeChange): 
+async def change_anime_api(anime_change: AnimeChange) -> dict[str, str | list]: 
     response = change_anime(anime_change) 
     return response 
 
@@ -153,13 +153,13 @@ inquire_router = APIRouter(prefix='/inquire')
 
 
 @inquire_router.post('/anime')
-async def inquire_anime_api(anime_inquire: AnimeInquire): 
+async def inquire_anime_api(anime_inquire: AnimeInquire) -> dict[str, str | list]: 
     response = inquire_anime(anime_inquire) 
     return response 
 
 
 @inquire_router.post('/episode') 
-async def inquire_episode_api(episode_inquire: EpisodeInquire): 
+async def inquire_episode_api(episode_inquire: EpisodeInquire) -> dict[str, str | list]: 
     response = inquire_episode(episode_inquire) 
     return response 
 
@@ -169,7 +169,7 @@ delete_router = APIRouter(prefix='/delete')
 
 
 @delete_router.delete('/') 
-async def delete_anime_api(anime_delete: AnimeDelete): 
+async def delete_anime_api(anime_delete: AnimeDelete) -> dict[str, str | list]: 
     response = delete_anime(anime_delete) 
     return response 
 
@@ -179,7 +179,7 @@ search_router = APIRouter(prefix='/search')
 
 
 @search_router.post('/') 
-async def search_anime_api(anime_search: AnimeSearch): 
+async def search_anime_api(anime_search: AnimeSearch) -> dict[str, str | list]: 
     response = await search_anime(anime_search) 
     return response 
 
@@ -189,7 +189,7 @@ update_router = APIRouter(prefix='/update')
 
 
 @update_router.get('/') 
-async def update_add_task_and_run_task_api(background_tasks: BackgroundTasks): 
+async def update_add_task_and_run_task_api(background_tasks: BackgroundTasks) -> dict[str, str | list]: 
     response = await update_add_task(auto_update=False)
     background_tasks.add_task(put_off_auto_update(update_run_task)) 
     return response  
@@ -204,10 +204,11 @@ app.include_router(router=search_router, dependencies=[Depends(is_config_loaded_
 app.include_router(router=update_router, dependencies=[Depends(is_config_loaded_and_checked)]) 
 
 
-def main(): 
+def main() -> None: 
     import uvicorn 
     uvicorn.run(app='autoanime:app', host='127.0.0.1', port=8000, reload=True) 
 
 
 if __name__ == '__main__': 
     main() 
+
