@@ -51,7 +51,7 @@ async def update_add_task(auto_update: bool) -> dict[str, str | list[dict[str, s
     update_uuid_set = set() 
     for anime_update in anime_update_list: 
         all_uuid_set.add(anime_update.uuid) 
-        for _, episode_num, pub_date, torrent_url in anime.get_episode_info(anime_update.source, anime_update.xml): 
+        for _, episode_num, pub_date, torrent_url in reversed(anime.get_episode_info(anime_update.source, anime_update.xml)): 
             if episode_num == -1: 
                 continue 
 

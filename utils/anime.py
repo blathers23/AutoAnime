@@ -47,7 +47,7 @@ def _xml_parser_generator(time_format: str) -> Callable[[str], list[tuple[str, i
 
     def _parse_episode(name: str) -> int: 
         res = -1
-        matched_episode_block = re.search(r' - \d+ |\[\d+\]|第\d+集|第\d+話', name)
+        matched_episode_block = re.search(r' - \d+ | - \d+v\d+ |\[\d+\]|第\d+集|第\d+話', name) 
         if matched_episode_block:
             matched_episode = re.search(r'\d+', matched_episode_block.group())
             if matched_episode:
