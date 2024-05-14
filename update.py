@@ -11,8 +11,8 @@ from utils import anime
 from utils.request import request_xml_async  
 from acid.internal import (
     add_episode_add_list, inquire_anime_update_ready, 
-    inquire_episode_update_ready, change_anime_db_update_result, 
-    change_episode_update_task_db_update_result, 
+    inquire_episode_update_ready, change_anime_db_unlock, 
+    change_anime_db_update_result, change_episode_update_task_db_update_result, 
 ) 
 from api_client import (
     qbittorrent_client as torrent_client, 
@@ -46,14 +46,20 @@ async def update_add_task(auto_update: bool) -> dict[str, str | list[dict[str, s
 
     # print(anime_db_list)
     
-    episode_add_list = [] 
+    episode_add_list = list() 
+    all_uuid_set = set() 
+    update_uuid_set = set() 
     for anime_update in anime_update_list: 
+        all_uuid_set.add(anime_update.uuid) 
         for _, episode_num, pub_date, torrent_url in anime.get_episode_info(anime_update.source, anime_update.xml): 
             if episode_num == -1: 
                 continue 
 
             elif episode_num in anime_update.episodes_list: 
                 continue 
+                
+            else:
+                update_uuid_set.add(anime_update.uuid) 
 
             episode_add_list.append(EpisodeAdd( 
                 torrent_url=torrent_url, 
@@ -66,7 +72,11 @@ async def update_add_task(auto_update: bool) -> dict[str, str | list[dict[str, s
             )) 
 
     # print(episode_add_list) 
+    change_anime_db_unlock(all_uuid_set - update_uuid_set) 
 
+    if len(episode_add_list) == 0: 
+        return {'code': 0, 'msg': 'No updates for anime detected', 'detail': []} 
+    
     await add_episode_add_list(episode_add_list) 
 
     return {'code': 1, 'msg': 'Anime update task added successfully', 'detail': []} 

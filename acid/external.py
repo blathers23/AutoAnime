@@ -49,7 +49,9 @@ def add_anime(anime_add: AnimeAdd) -> dict[str, str | list[dict[str, str]]]:
     ) 
 
     with Session(engine) as session: 
-        if session.exec(select(AnimeDB).where(AnimeDB.uuid == anime_db.uuid)).first() is not None: 
+        if session.exec(
+            select(AnimeDB).where(and_(AnimeDB.name == anime_db.name, AnimeDB.season == anime_db.season))
+        ).first() is not None: 
             return {'code': 0, 'msg': 'Anime is already in the library', 'detail': []} 
         
         session.add(anime_db) 

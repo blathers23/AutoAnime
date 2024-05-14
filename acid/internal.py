@@ -20,6 +20,20 @@ def change_anime_db_clean_up() -> None:
         session.commit() 
 
 
+def change_anime_db_unlock(uuid_set: set[str]) -> None: 
+    with Session(engine) as session: 
+        anime_db_list = session.exec( 
+            select(AnimeDB).where(AnimeDB.under_management == True).with_for_update() 
+        ).all() 
+        
+        for anime_db in anime_db_list: 
+            if anime_db.uuid in uuid_set: 
+                anime_db.under_management = False 
+
+        session.add_all(anime_db_list) 
+        session.commit() 
+
+
 def change_anime_db_update_result(
         uuid_episode_num_list_dict: dict[str, list[int]], uuid_episode_newest_pub_date: dict[str, float]
     ) -> None: 
