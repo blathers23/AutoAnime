@@ -58,7 +58,11 @@ def _xml_parser_generator(time_format: str) -> Callable[[str], list[tuple[str, i
     def _xml_parser(xml: str) -> list[tuple[str, int, float, str]]: 
         episode_info_list: list[tuple[str, int, float, str]] = list() 
 
-        root = ElementTree.fromstring(xml).find('channel') 
+        try: 
+            root = ElementTree.fromstring(xml).find('channel') 
+        except: 
+            print(xml) 
+            return list() 
 
         for item in root.iter(tag='item'): 
             title: str = item.find('title').text 

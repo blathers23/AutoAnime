@@ -1,17 +1,18 @@
 import os 
-import asyncio 
 
 from sqlmodel import Session, select, and_  
 
-from settings import AnimeSourcesParsed, user_settings 
-from model import AnimeChange, AnimeAdd, AnimeInquire, AnimeDelete, EpisodeAdd, EpisodeUpdate 
+from settings import AnimeSourcesParsed 
+from model import AnimeChange, AnimeAdd, AnimeInquire, AnimeDelete, EpisodeInquire  
 from database import engine, AnimeDB, EpisodeUpdateTaskDB 
-from utils import anime, episode 
+from utils import anime 
 
 
 def add_anime(anime_add: AnimeAdd) -> dict[str, str | list[dict[str, str]]]: 
     uuid = anime.get_uuid(anime_add.name, anime_add.season)     
     dir_path = anime.get_dir_path(anime_add.name, anime_add.season) 
+
+    os.makedirs(dir_path, exist_ok=True) 
 
     if anime_add.search_text is None and anime_add.http_url is None: 
         return {'code': 0, 'msg': 'Search text and http url cannot be empty at the same time', 'detail': []} 
@@ -75,6 +76,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
         anime_db = session.exec(select(AnimeDB).where(AnimeDB.uuid == anime_change.uuid)).first() 
         
         if anime_change.search_text is not None and anime_change.http_url is not None: 
+            anime_db.under_management = False 
+            session.add(anime_db) 
+            session.commit() 
+
             return {'code': 0, 'msg': 'Search text and http url cannot have values at the same time', 'detail': []} 
 
         if anime_change.source is not None: 
@@ -83,6 +88,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
             if anime_change.source in AnimeSourcesParsed: 
 
                 if anime_change.http_url is not None: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+
                     return { 
                         'code': 0, 'detail': [], 
                         'msg': f'The selected source {anime_change.source.value} cannot be passed the http url', 
@@ -92,6 +101,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
                     anime_db.search_text = anime_change.search_text 
 
                 elif anime_db.search_text is None: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+
                     return { 
                         'code': 0, 'detail': [],
                         'msg': f'The selected source {anime_change.source.value} must be passed the search text', 
@@ -102,6 +115,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
             else: 
                 
                 if anime_change.search_text is not None: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+
                     return {
                         'code': 0, 'detail': [], 
                         'msg': f'The selected source {anime_change.source.value} cannot be passed the search text', 
@@ -111,6 +128,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
                     anime_db.http_url = anime_change.search_text 
 
                 elif anime_db.http_url is None: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+
                     return { 
                         'code': 0, 'detail': [], 
                         'msg': f'The selected source {anime_change.source.value} must be passed the http url', 
@@ -122,6 +143,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
 
             if anime_change.search_text is not None: 
                 if anime_db.source not in AnimeSourcesParsed: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+
                     return { 
                         'code': 0, 'detail': [], 
                         'msg': f'The selected source {anime_db.source} cannot be passed the search text', 
@@ -132,6 +157,10 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
 
             if anime_change.http_url is not None: 
                 if anime_db.source in AnimeSourcesParsed: 
+                    anime_db.under_management = False 
+                    session.add(anime_db) 
+                    session.commit() 
+                
                     return { 
                         'code': 0, 'detail': [], 
                         'msg': f'The selected source {anime_db.source} cannot be passed the http url', 
@@ -142,6 +171,7 @@ def change_anime(anime_change: AnimeChange) -> dict[str, str | list[dict[str, st
         if anime_change.auto_update is not None: 
             anime_db.auto_update = anime_change.auto_update 
 
+        anime_db.under_management = False 
         session.add(anime_db) 
         session.commit() 
 
@@ -181,23 +211,28 @@ def delete_anime(anime_delete: AnimeDelete) -> dict[str, str | list[str, str]]:
         session.commit() 
 
 
-def inquire_episode(done: bool | None, under_management: bool | None) -> dict[str, str | list[str, str]]: 
+def inquire_episode(episode_inquire: EpisodeInquire) -> dict[str, str | list[str, str]]: 
     with Session(engine) as session: 
-        if done is None and under_management is None: 
+        if episode_inquire.done is None and episode_inquire.under_management is None: 
             episode_update_task_db_list = session.exec(select(EpisodeUpdateTaskDB)).all() 
-        elif done is not None and under_management is not None: 
+        elif episode_inquire.done is not None and episode_inquire.under_management is not None: 
             episode_update_task_db_list = session.exec( 
                 select(EpisodeUpdateTaskDB).where( 
-                    and_(EpisodeUpdateTaskDB.done == done, EpisodeUpdateTaskDB.under_management == under_management) 
+                    and_(
+                        EpisodeUpdateTaskDB.done == episode_inquire.done, 
+                        EpisodeUpdateTaskDB.under_management == episode_inquire.under_management
+                    ) 
                 ) 
             ).all() 
-        elif done is not None: 
+        elif episode_inquire.done is not None: 
             episode_update_task_db_list = session.exec(
-                select(EpisodeUpdateTaskDB).where(EpisodeUpdateTaskDB.done == done)
+                select(EpisodeUpdateTaskDB).where(EpisodeUpdateTaskDB.done == episode_inquire.done)
             ).all() 
         else: 
             episode_update_task_db_list = session.exec(
-                select(EpisodeUpdateTaskDB).where(EpisodeUpdateTaskDB.under_management == under_management) 
+                select(EpisodeUpdateTaskDB).where(
+                    EpisodeUpdateTaskDB.under_management == episode_inquire.under_management
+                ) 
             ).all() 
             
 

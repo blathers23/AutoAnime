@@ -80,7 +80,7 @@ def read_user_settings_file(user_settings: UserSettings) -> dict[str, str | dict
     settings_file_path: str = user_settings.settings_file_path 
     if not os.path.isfile(settings_file_path): 
         return {'code': 0, 'msg': 'User settings file does not exist', 'detail': []} 
-     
+
     with open(settings_file_path, mode='r') as f: 
         user_settings_dict: dict = yaml.safe_load(f) 
 
@@ -114,7 +114,7 @@ autoanime_settings = AutoAnimeSettings()
 user_settings = UserSettings(
     host_name = 'AutoAnime', 
     base_path = os.path.dirname(__file__), 
-    work_path = os.path.dirname(__file__),  
+    work_path = os.path.dirname(__file__), 
     settings_file_path = os.path.join(os.path.dirname(__file__), 'user_settings.yaml'), 
     jellyfin_addr = 'http://127.0.0.1:8096/', 
     jellyfin_username = 'root', 

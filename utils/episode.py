@@ -4,10 +4,7 @@ from base64 import b32decode
 from pydantic import AnyUrl 
 from torf import Torrent 
 
-from model import EpisodeAdd 
-from database import EpisodeUpdateTaskDB 
-from settings import user_settings 
-from request import request_tmp_file_async 
+from utils.request import request_tmp_file_async 
 
 
 async def parse_torrent_url_async(torrent_url: AnyUrl) -> tuple[str, str, str]: 

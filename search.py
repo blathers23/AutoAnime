@@ -1,6 +1,6 @@
-from settings import user_settings, AnimeSourcesParsed 
+from settings import AnimeSourcesParsed 
 from model import AnimeSearch 
-from utils import request_xml_async 
+from utils.request import request_xml_async 
 from utils.anime import get_http_url, get_episode_info 
 
 

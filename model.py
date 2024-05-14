@@ -56,6 +56,11 @@ class EpisodeAdd(BaseModel, validate_assignment=True):
     pub_date: float 
 
 
+class EpisodeInquire(BaseModel, validate_assignment=True): 
+    done: bool | None 
+    under_management: bool | None
+
+
 class EpisodeUpdate(BaseModel, validate_assignment=True): 
     id_: int 
     torrent_hash: str 

@@ -6,8 +6,9 @@ from aioshutil import copy
 
 from settings import user_settings 
 from model import AnimeUpdate, EpisodeAdd, EpisodeUpdate  
-from database import engine, AnimeDB, EpisodeUpdateTaskDB  
-from utils import request_xml_async, anime 
+from database import AnimeDB  
+from utils import anime 
+from utils.request import request_xml_async  
 from acid.internal import (
     add_episode_add_list, inquire_anime_update_ready, 
     inquire_episode_update_ready, change_anime_db_update_result, 
@@ -31,7 +32,7 @@ async def _anime_db_to_anime_update_async(anime_db: AnimeDB) -> AnimeUpdate:
         dir_path=anime_db.dir_path, 
         source=anime_db.source, 
         http_url=anime_db.http_url, 
-        episodes_list=list(map(int, anime_db.episodes_str.split(','))), 
+        episodes_list=list(map(lambda x: int(x) if len(x) > 0 else -1, anime_db.episodes_str.split(','))), 
         xml=await request_xml_async(anime_db.http_url),  
     ) 
 
@@ -42,11 +43,16 @@ async def update_add_task(auto_update: bool) -> dict[str, str | list[dict[str, s
     anime_update_list = await asyncio.gather(*(
         asyncio.create_task(_anime_db_to_anime_update_async(anime_db)) for anime_db in anime_db_list
     )) 
+
+    # print(anime_db_list)
     
     episode_add_list = [] 
     for anime_update in anime_update_list: 
         for _, episode_num, pub_date, torrent_url in anime.get_episode_info(anime_update.source, anime_update.xml): 
-            if episode_num in anime_update.episodes_list: 
+            if episode_num == -1: 
+                continue 
+
+            elif episode_num in anime_update.episodes_list: 
                 continue 
 
             episode_add_list.append(EpisodeAdd( 
@@ -54,10 +60,12 @@ async def update_add_task(auto_update: bool) -> dict[str, str | list[dict[str, s
                 uuid=anime_update.uuid, 
                 name=anime_update.name, 
                 season=anime_update.season, 
-                dir_path=anime_update.dir_path, 
+                dir_path=str(anime_update.dir_path), 
                 episode_num=episode_num, 
                 pub_date=pub_date, 
             )) 
+
+    # print(episode_add_list) 
 
     await add_episode_add_list(episode_add_list) 
 
@@ -104,15 +112,18 @@ async def update_run_task() -> None:
     episode_update_list: list[EpisodeUpdate] = list() 
     torrent_file_path_list: list[str] = list() 
     torrent_magnet_list: list[str] = list() 
+    torrent_hash_list: list[str] = list()
 
     for episode_update_task_db in episode_update_task_db_list: 
         if episode_update_task_db.torrent_file_path: 
             torrent_file_path_list.append(episode_update_task_db.torrent_file_path) 
+            torrent_hash_list.append(episode_update_task_db.torrent_hash) 
         elif episode_update_task_db.torrent_magnet: 
             torrent_magnet_list.append(episode_update_task_db.torrent_magnet) 
+            torrent_hash_list.append(episode_update_task_db.torrent_hash) 
         else: 
             continue 
-
+        
         episode_update_list.append( 
             EpisodeUpdate( 
                 id_=episode_update_task_db.id_, 
@@ -134,10 +145,14 @@ async def update_run_task() -> None:
     uuid_episode_num_list_dict: dict[str, list[int]] = defaultdict(list) 
     uuid_newest_pub_date: dict[str, float] = defaultdict(float) 
 
+    torrent_client.delete(torrent_hashes=torrent_hash_list) 
+
     if torrent_client.add(torrent_urls=torrent_magnet_list, torrent_files=torrent_file_path_list) != 'Ok.': 
         print("can't connect to the torrent server") 
         for episode_update in episode_update_list: 
             id_set_fail.add(episode_update.id_) 
+            uuid_episode_num_list_dict[episode_update.uuid] 
+            uuid_newest_pub_date[episode_update.uuid] 
 
         change_episode_update_task_db_update_result(id_set_success, id_set_fail) 
         change_anime_db_update_result(uuid_episode_num_list_dict, uuid_newest_pub_date) 
@@ -160,7 +175,7 @@ async def update_run_task() -> None:
 
     for episode_update in episode_update_list: 
         if episode_update.copied: 
-            id_set_success.add(episode_update) 
+            id_set_success.add(episode_update.id_) 
             uuid_episode_num_list_dict[episode_update.uuid].append(episode_update.episode_num) 
             uuid_newest_pub_date[episode_update.uuid] = max(uuid_newest_pub_date[episode_update.uuid], episode_update.pub_date) 
         else: 
@@ -170,4 +185,9 @@ async def update_run_task() -> None:
     change_anime_db_update_result(uuid_episode_num_list_dict, uuid_newest_pub_date) 
 
     media_client.refresh() 
+
+
+async def update_auto_update() -> None: 
+    _ = await update_add_task(auto_update=True) 
+    await update_run_task() 
 

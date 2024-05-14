@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session, select, and_  
 
-from settings import AnimeSourcesParsed, user_settings 
-from model import AnimeChange, AnimeAdd, AnimeInquire, AnimeDelete, EpisodeAdd, EpisodeUpdate 
+from settings import user_settings 
+from model import EpisodeAdd 
 from database import engine, AnimeDB, EpisodeUpdateTaskDB 
-from utils import anime, episode 
+from utils import episode 
 
 
 def change_anime_db_clean_up() -> None: 
@@ -29,23 +29,23 @@ def change_anime_db_update_result(
         ).all() 
         
         for anime_db in anime_db_list: 
-            if len(uuid_episode_num_list_dict[anime_db.uuid] > 0) and anime_db.episodes_str: 
-                anime_db.episodes_str += ',' 
-            
+            if anime_db.uuid in uuid_episode_num_list_dict: 
+                if len(anime_db.episodes_str) > 0: 
+                    anime_db.episodes_str += ',' 
+
                 anime_db.episodes_str += ','.join(map(str, uuid_episode_num_list_dict[anime_db.uuid])) 
                 anime_db.newest_pub_date = max(anime_db.newest_pub_date, uuid_episode_newest_pub_date[anime_db.uuid]) 
-                
-            anime_db.under_management = False 
+                anime_db.under_management = False 
 
         session.add_all(anime_db_list) 
         session.commit() 
 
 
 def inquire_anime_update_ready(auto_update: bool) -> list[AnimeDB]: 
-    with Session(engine) as session: 
+    with Session(engine, expire_on_commit=False) as session: 
         if not auto_update: 
             anime_db_list = session.exec(select(AnimeDB).where( 
-                and_(AnimeDB.under_management == False) 
+                AnimeDB.under_management == False 
             ).with_for_update()).all() 
         else: 
             timestamp = datetime.now(timezone.utc).timestamp() 
@@ -63,7 +63,7 @@ def inquire_anime_update_ready(auto_update: bool) -> list[AnimeDB]:
         session.add_all(anime_db_list) 
         session.commit() 
 
-    return anime_db_list 
+        return anime_db_list 
 
 
 async def _episode_add_to_episode_update_task_db(episode_add: EpisodeAdd) -> EpisodeUpdateTaskDB: 
@@ -77,6 +77,7 @@ async def _episode_add_to_episode_update_task_db(episode_add: EpisodeAdd) -> Epi
             torrent_hash=torrent_hash, 
             torrent_file_path=torrent_file_path, 
             torrent_magnet=torrent_magnet, 
+            uuid=episode_add.uuid, 
             name=episode_add.name, 
             season=episode_add.season, 
             episode_num=episode_add.episode_num, 
@@ -99,7 +100,7 @@ async def add_episode_add_list(episode_add_list: list[EpisodeAdd]) -> None:
     )) 
     episode_update_task_db_list = [ 
         episode_update_task_db for episode_update_task_db in episode_update_task_db_list 
-        if episode_update_task_db 
+        if episode_update_task_db is not None 
     ] 
 
     with Session(engine) as session: 
@@ -142,7 +143,7 @@ def change_episode_update_task_db_update_result(id_set_success: set[int], id_set
 
 
 def inquire_episode_update_ready() -> list[EpisodeUpdateTaskDB]: 
-    with Session(engine) as session: 
+    with Session(engine, expire_on_commit=False) as session: 
         episode_list = session.exec(
             select(EpisodeUpdateTaskDB).where(
                 EpisodeUpdateTaskDB.done == False
@@ -187,7 +188,7 @@ def inquire_episode_update_ready() -> list[EpisodeUpdateTaskDB]:
         session.add_all(episode_list) 
         session.commit() 
 
-    return episode_update_task_db_list 
+        return episode_update_task_db_list 
 
 
 def delete_episode_update_task_db_out_of_capacity() -> None: 
